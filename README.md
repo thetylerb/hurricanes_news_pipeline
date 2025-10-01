@@ -23,6 +23,18 @@ A full pipeline project that collects Carolina Hurricanes news articles, structu
 - **Streamlit** (interactive dashboard)
 - **Modal** (serverless deployment)
 
+## Proof of Deployment
+
+### 1) Modal deployment output
+![Terminal showing Modal deploy URL](docs/bash_deployment.png)
+
+### 2) Live dashboard (local run)
+![Streamlit dashboard](docs/dashboard.png)
+
+### 3) Supabase table populated
+![Supabase articles table](docs/supabase_pipeline.png)
+
+
 ---
 
 ## 📂 Project Structure
