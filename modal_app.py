@@ -1,9 +1,14 @@
-from modal import App, Image, Secret, web_server
+# modal_app.py
+import modal
+import subprocess
 
-app = App("canes-news-dashboard")
+app = modal.App("canes-news-dashboard")
 
+# Build the image:
+# 1) install deps
+# 2) copy your code LAST (copy=True so it bakes into the image)
 image = (
-    Image.debian_slim()
+    modal.Image.debian_slim()
     .pip_install(
         "streamlit",
         "pandas",
@@ -11,31 +16,30 @@ image = (
         "supabase",
         "python-dotenv",
     )
-    # IMPORTANT: add local files LAST and copy them into the image
     .add_local_dir(".", "/app", copy=True)
 )
 
+# Serve Streamlit with secrets available
 @app.function(
     image=image,
-    secrets=[Secret.from_name("supabase"), Secret.from_name("openai")],
-    min_containers=1,
+    min_containers=1,  # if your CLI complains, change to keep_warm=1
+    secrets=[
+        modal.Secret.from_name("supabase"),
+        modal.Secret.from_name("openai"),
+    ],
 )
-@web_server(port=8000, startup_timeout=180)
+@modal.web_server(port=8000, startup_timeout=600)
 def serve():
-    import os, sys, subprocess
+    import os, sys
     from pathlib import Path
 
     script = Path("/app/streamlit_app.py")
-    print("Launching Streamlit with script:", script, flush=True)
-
-    # Sanity log: confirm secrets are visible
+    print("Launching Streamlit with:", script, flush=True)
     print("ENV CHECK:",
           "SUPABASE_URL" in os.environ,
           "SUPABASE_ANON_KEY" in os.environ,
+          "OPENAI_API_KEY" in os.environ,
           flush=True)
-
-    env = os.environ.copy()
-    env["STREAMLIT_BROWSER_GATHER_USAGE_STATS"] = "false"
 
     cmd = [
         sys.executable, "-m", "streamlit", "run", str(script),
@@ -47,5 +51,6 @@ def serve():
     ]
     print("CMD:", " ".join(cmd), flush=True)
 
-    rc = subprocess.call(cmd, env=env)
-    print("Streamlit exited with code:", rc, flush=True)
+    # Non-blocking launch so Modal can finish startup
+    subprocess.Popen(cmd, env=os.environ.copy())
+    # Do not wait() here—Modal will proxy port 8000 once Streamlit binds
